@@ -4,11 +4,14 @@ services:
     restart: always
     ports:
       - "3000:8000"
+    command: gateway run --config /etc/gateway/config.json
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
+    volumes:
+      - ./config.json:/etc/gateway/config.json:ro
     networks:
       - dokploy-network
 

@@ -1,0 +1,7 @@
+{
+  "api": {
+    "oauth": {
+      "base_url": "https://api.apashinov.com"
+    }
+  }
+}
