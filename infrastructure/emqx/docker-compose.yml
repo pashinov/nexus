@@ -13,7 +13,13 @@ services:
       - emqx_log:/opt/emqx/log
     environment:
       - EMQX_DASHBOARD__DEFAULT_PASSWORD=${EMQX_DASHBOARD_PASSWORD}
+    networks:
+      - dokploy-network
 
 volumes:
   emqx_data: {}
   emqx_log: {}
+
+networks:
+  dokploy-network:
+    external: true
