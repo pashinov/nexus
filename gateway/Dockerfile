@@ -12,7 +12,8 @@ RUN mkdir src && echo "fn main() {}" > src/main.rs \
 # Build the real binary
 COPY src ./src
 COPY migrations ./migrations
-RUN cargo build --release --locked
+COPY .sqlx ./.sqlx
+RUN SQLX_OFFLINE=true cargo build --release --locked
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim
