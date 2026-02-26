@@ -21,6 +21,10 @@ pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
         .context("failed to connect to PostgreSQL")?;
     tracing::info!("PostgreSQL connected");
 
+    tracing::info!("running database migrations");
+    sqlx::migrate!("./migrations").run(&pool).await.context("failed to run database migrations")?;
+    tracing::info!("database migrations complete");
+
     let redis_url = std::env::var("REDIS_URL").context("REDIS_URL not set")?;
     tracing::info!("connecting to Redis...");
     let redis_client = RedisClient::new(&redis_url)
