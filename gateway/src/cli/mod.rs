@@ -67,7 +67,7 @@ impl CmdRun {
         utils::logger::init_logger(&config.logger, self.logger_config)?;
         utils::logger::set_abort_with_tracing();
 
-        api::http_service(config.api, config.postgres).await?;
+        api::http_service(config).await?;
 
         std::future::pending::<()>().await;
 

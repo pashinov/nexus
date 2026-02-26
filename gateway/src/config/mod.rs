@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::config::ApiConfig;
+use crate::redis::RedisConfig;
 use crate::sqlx::PgConfig;
 use crate::utils::logger::LoggerConfig;
 
@@ -10,6 +11,8 @@ pub struct AppConfig {
     pub api: ApiConfig,
 
     pub postgres: PgConfig,
+
+    pub redis: RedisConfig,
 
     pub logger: LoggerConfig,
 }

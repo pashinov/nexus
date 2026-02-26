@@ -132,6 +132,7 @@ where
     axum::Router::new()
         .route("/", get(controllers::auth::login))
         .route("/callback", get(controllers::auth::callback))
+        .route("/logout", post(controllers::auth::logout))
 }
 
 fn user_router<S>() -> axum::Router<S>

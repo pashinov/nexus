@@ -22,6 +22,8 @@ pub struct Claims {
     pub name: String,
     /// Expiration timestamp (Unix seconds).
     pub exp: u32,
+    /// Unique token ID used for revocation.
+    pub jti: String,
 }
 
 /// User info returned by Google's userinfo endpoint.

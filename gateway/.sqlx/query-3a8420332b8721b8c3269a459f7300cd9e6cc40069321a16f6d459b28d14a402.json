@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO users (sub, email, name)\n            VALUES ($1, $2, $3)\n            ON CONFLICT (sub) DO UPDATE\n                SET email      = EXCLUDED.email,\n                    name       = EXCLUDED.name,\n                    updated_at = now()\n            RETURNING id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3a8420332b8721b8c3269a459f7300cd9e6cc40069321a16f6d459b28d14a402"
+}

@@ -1,8 +1,9 @@
 use anyhow::Context;
 
-use crate::api::config::ApiConfig;
 use crate::api::state::ApiState;
-use crate::sqlx::{PgConfig, SqlxClient};
+use crate::config::AppConfig;
+use crate::redis::RedisClient;
+use crate::sqlx::SqlxClient;
 
 pub mod config;
 pub mod controllers;
@@ -10,20 +11,30 @@ pub mod endpoint;
 pub mod models;
 pub mod state;
 
-pub async fn http_service(api_config: ApiConfig, pg_config: PgConfig) -> anyhow::Result<()> {
+pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
     let db_url = std::env::var("DATABASE_URL").context("DATABASE_URL not set")?;
+    tracing::info!("connecting to PostgreSQL...");
     let pool = ::sqlx::postgres::PgPoolOptions::new()
-        .max_connections(pg_config.db_pool_size)
+        .max_connections(config.postgres.db_pool_size)
         .connect(&db_url)
         .await
         .context("failed to connect to PostgreSQL")?;
+    tracing::info!("PostgreSQL connected");
 
-    tracing::info!(listen_addr = %api_config.listen_addr, "API server started");
+    let redis_url = std::env::var("REDIS_URL").context("REDIS_URL not set")?;
+    tracing::info!("connecting to Redis...");
+    let redis_client = RedisClient::new(&redis_url)
+        .await
+        .context("failed to connect to Redis")?;
+    tracing::info!("Redis connected");
+
+    tracing::info!(listen_addr = %config.api.listen_addr, "API server starting...");
 
     let state = ApiState::builder()
-        .with_config(api_config)
+        .with_config(config)
         .with_http_client(reqwest::Client::new())
         .with_sqlx_client(SqlxClient::new(pool))
+        .with_redis_client(redis_client)
         .build()?;
 
     let endpoint = state.bind_endpoint().await?;
