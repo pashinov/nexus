@@ -1,14 +1,14 @@
 use std::time::Duration;
 
+use crate::api::controllers;
+use crate::api::state::*;
 use anyhow::Result;
 use axum::extract::{DefaultBodyLimit, FromRef};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use tokio::net::TcpListener;
-
-use crate::api::controllers;
-use crate::api::state::*;
+use tower_http::normalize_path::NormalizePathLayer;
 
 pub struct ApiEndpointBuilder<C = ()> {
     common: ApiEndpointBuilderCommon,
@@ -103,6 +103,7 @@ impl ApiEndpoint {
         // Prepare middleware
         let service = ServiceBuilder::new()
             .layer(DefaultBodyLimit::max(MAX_REQUEST_SIZE))
+            .layer(NormalizePathLayer::trim_trailing_slash())
             .layer(CorsLayer::permissive())
             .layer(TimeoutLayer::with_status_code(
                 StatusCode::REQUEST_TIMEOUT,
