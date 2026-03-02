@@ -7,13 +7,15 @@ services:
     networks:
       - dokploy-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
 
   gateway:
-    build: ../../gateway
+    build:
+      context: ../../
+      dockerfile: gateway/Dockerfile
     restart: always
     ports:
       - "127.0.0.1:8000:8000"
@@ -33,7 +35,7 @@ services:
         condition: service_healthy
 
 volumes:
-  redis_data: {}
+  redis_data: { }
 
 networks:
   dokploy-network:
