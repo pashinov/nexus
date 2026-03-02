@@ -1,0 +1,46 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91.0"
+repository = "https://github.com/pashinov/nexus"
+license = "MIT OR Apache-2.0"
+
+[workspace]
+resolver = "2"
+members = [
+    "gateway",
+    "mqtt-client",
+    "utils"
+]
+
+[workspace.dependencies]
+# crates.io deps
+anyhow = "1.0.79"
+axum = "0.8"
+clap = { version = "4.5.3", features = ["derive"] }
+futures-util = "0.3"
+jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
+libc = "0.2"
+redis = { version = "1.0", features = ["tokio-comp", "connection-manager"] }
+reqwest = { version = "0.13", features = ["json", "form"] }
+native-tls = "0.2"
+redb = "2"
+rumqttc = { version = "0.25.1", features = ["use-native-tls"] }
+rustc_version = "0.4.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.114"
+serde_path_to_error = "0.1"
+sqlx = { version = "0.8.2", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "chrono", "json"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "timeout", "normalize-path"] }
+tokio = { version = "1", default-features = false }
+tracing = "0.1"
+tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-stackdriver = "0.10.0"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+zeroize = { version = "1", features = ["derive"] }
+
+# local deps
+nexus-utils = { path = "./utils", version = "0.1.0" }

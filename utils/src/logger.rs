@@ -13,7 +13,7 @@ use tracing_appender::rolling::Rotation;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::{EnvFilter, Layer, fmt};
 
-use crate::utils;
+use crate::serde::load_json_from_file;
 
 pub struct LoggerTargets {
     directives: Vec<Directive>,
@@ -21,7 +21,7 @@ pub struct LoggerTargets {
 
 impl LoggerTargets {
     pub fn load_from<P: AsRef<Path>>(path: P) -> Result<Self> {
-        utils::serde::load_json_from_file(path)
+        load_json_from_file(path)
     }
 
     pub fn build_subscriber(&self) -> EnvFilter {

@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
+use nexus_utils::logger::LoggerConfig;
 
 use crate::api::config::ApiConfig;
 use crate::redis::RedisConfig;
 use crate::sqlx::PgConfig;
-use crate::utils::logger::LoggerConfig;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]

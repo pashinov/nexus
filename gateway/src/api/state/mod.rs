@@ -4,6 +4,7 @@ use anyhow::Result;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use reqwest::Client as HttpClient;
 use tokio::net::TcpListener;
+use nexus_utils::time::now_sec;
 
 use uuid::Uuid;
 
@@ -13,7 +14,6 @@ use crate::api::models::auth::Claims;
 use crate::config::AppConfig;
 use crate::redis::{RedisClient, RedisConfig};
 use crate::sqlx::SqlxClient;
-use crate::utils::time::now_sec;
 
 pub struct ApiStateBuilder<MandatoryFields = (HttpClient, SqlxClient, RedisClient)> {
     config: AppConfig,
