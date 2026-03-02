@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use nexus_utils::time::now_sec;
 use reqwest::Client as HttpClient;
 use tokio::net::TcpListener;
-use nexus_utils::time::now_sec;
 
 use uuid::Uuid;
 
@@ -107,8 +107,16 @@ impl ApiState {
         TcpListener::bind(self.api_config().listen_addr).await
     }
 
+    pub async fn bind_internal_socket(&self) -> std::io::Result<TcpListener> {
+        TcpListener::bind(self.api_config().internal_listen_addr).await
+    }
+
     pub async fn bind_endpoint(&self) -> Result<ApiEndpoint> {
         ApiEndpoint::builder().bind(self.clone()).await
+    }
+
+    pub async fn bind_internal_endpoint(&self) -> Result<ApiEndpoint> {
+        ApiEndpoint::builder().internal_bind(self.clone()).await
     }
 
     pub fn api_config(&self) -> &ApiConfig {

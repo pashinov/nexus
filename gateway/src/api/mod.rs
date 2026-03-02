@@ -32,7 +32,11 @@ pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
         .context("failed to connect to Redis")?;
     tracing::info!("Redis connected");
 
-    tracing::info!(listen_addr = %config.api.listen_addr, "API server starting...");
+    tracing::info!(
+        listen_addr = %config.api.listen_addr,
+        internal_listen_addr = %config.api.internal_listen_addr,
+        "API server starting...",
+    );
 
     let state = ApiState::builder()
         .with_config(config)
@@ -42,12 +46,20 @@ pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
         .build()?;
 
     let endpoint = state.bind_endpoint().await?;
+    let internal_endpoint = state.bind_internal_endpoint().await?;
 
     tokio::task::spawn(async move {
         if let Err(e) = endpoint.serve().await {
             tracing::error!("API server failed: {e:?}");
         }
         tracing::info!("API server stopped");
+    });
+
+    tokio::task::spawn(async move {
+        if let Err(e) = internal_endpoint.serve().await {
+            tracing::error!("internal API server failed: {e:?}");
+        }
+        tracing::info!("internal API server stopped");
     });
 
     Ok(())

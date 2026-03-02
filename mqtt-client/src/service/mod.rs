@@ -23,10 +23,7 @@ pub async fn mqtt_service(config: AppConfig) -> anyhow::Result<()> {
         loop {
             interval.tick().await;
             let payload = serde_json::json!({ "version": VERSION }).to_string();
-            if let Err(e) = mqtt_client
-                .publish("client/version", payload.as_bytes())
-                .await
-            {
+            if let Err(e) = mqtt_client.publish("client/info", payload.as_bytes()).await {
                 tracing::error!("failed to publish version: {e:#}");
             }
         }

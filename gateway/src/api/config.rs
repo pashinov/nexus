@@ -12,6 +12,11 @@ pub struct ApiConfig {
     /// Default: `0.0.0.0:8000`
     pub listen_addr: SocketAddr,
 
+    /// Internal-only listener, not exposed outside the docker network.
+    ///
+    /// Default: `0.0.0.0:8001`
+    pub internal_listen_addr: SocketAddr,
+
     pub oauth: OAuthConfig,
 }
 
@@ -19,6 +24,7 @@ impl Default for ApiConfig {
     fn default() -> Self {
         Self {
             listen_addr: (Ipv4Addr::UNSPECIFIED, 8000).into(),
+            internal_listen_addr: (Ipv4Addr::UNSPECIFIED, 8001).into(),
             oauth: OAuthConfig::default(),
         }
     }
