@@ -1,4 +1,3 @@
-use axum::Json;
 use axum::extract::{FromRef, FromRequestParts, Query, State};
 use axum::http::StatusCode;
 use axum::http::header::AUTHORIZATION;
@@ -87,7 +86,9 @@ pub async fn callback(
 
 pub async fn login_impl(state: ApiState, params: OAuthLoginQuery) -> anyhow::Result<Response> {
     let csrf_state = Uuid::new_v4().to_string();
-    state.store_oauth_state(&csrf_state, &params.redirect_to).await?;
+    state
+        .store_oauth_state(&csrf_state, &params.redirect_to)
+        .await?;
 
     tracing::info!("OAuth login initiated");
 
