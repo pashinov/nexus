@@ -1,7 +1,7 @@
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.91.0"
+rust-version = "1.88.0"
 repository = "https://github.com/pashinov/nexus"
 license = "MIT OR Apache-2.0"
 
