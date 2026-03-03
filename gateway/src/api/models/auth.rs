@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 
+/// Query parameters for initiating OAuth login.
+#[derive(Debug, Deserialize)]
+pub struct OAuthLoginQuery {
+    pub redirect_to: String,
+}
+
 /// Query parameters received on OAuth callback.
 #[derive(Debug, Deserialize)]
 pub struct OAuthCallbackQuery {
     pub code: String,
     pub state: String,
-}
-
-/// Response returned to the client after successful authentication.
-#[derive(Debug, Serialize)]
-pub struct AuthResponse {
-    pub token: String,
 }
 
 /// JWT claims.

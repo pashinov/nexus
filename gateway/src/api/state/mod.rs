@@ -135,17 +135,17 @@ impl ApiState {
         &self.inner.sqlx_client
     }
 
-    /// Store a CSRF state token generated on OAuth redirect.
-    pub async fn store_oauth_state(&self, state: &str) -> anyhow::Result<()> {
+    /// Store a CSRF state token with its redirect_to URL.
+    pub async fn store_oauth_state(&self, state: &str, redirect_to: &str) -> anyhow::Result<()> {
         self.inner
             .redis_client
-            .store_oauth_state(state, self.inner.config.redis.oauth_state_ttl)
+            .store_oauth_state(state, redirect_to, self.inner.config.redis.oauth_state_ttl)
             .await
     }
 
     /// Consume a CSRF state token on callback.
-    /// Returns false if state not found — possible CSRF attack.
-    pub async fn consume_oauth_state(&self, state: &str) -> anyhow::Result<bool> {
+    /// Returns the redirect_to URL if valid, None if state not found (possible CSRF attack).
+    pub async fn consume_oauth_state(&self, state: &str) -> anyhow::Result<Option<String>> {
         self.inner.redis_client.consume_oauth_state(state).await
     }
 

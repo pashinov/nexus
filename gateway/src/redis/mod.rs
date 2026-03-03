@@ -21,24 +21,33 @@ impl RedisClient {
         Ok(Self { client: manager })
     }
 
-    /// Store a CSRF state token with a TTL.
-    pub async fn store_oauth_state(&self, state: &str, ttl_secs: u64) -> anyhow::Result<()> {
+    /// Store a CSRF state token with its redirect_to URL and a TTL.
+    pub async fn store_oauth_state(
+        &self,
+        state: &str,
+        redirect_to: &str,
+        ttl_secs: u64,
+    ) -> anyhow::Result<()> {
         let mut conn = self.client.clone();
         let _: () = conn
-            .set_ex(state, 1u8, ttl_secs)
+            .set_ex(format!("oauth:state:{state}"), redirect_to, ttl_secs)
             .await
             .context("failed to store OAuth state in Redis")?;
         Ok(())
     }
 
-    /// Delete the CSRF state token and return whether it existed.
-    pub async fn consume_oauth_state(&self, state: &str) -> anyhow::Result<bool> {
+    /// Delete the CSRF state token and return the redirect_to URL if it existed.
+    pub async fn consume_oauth_state(
+        &self,
+        state: &str,
+    ) -> anyhow::Result<Option<String>> {
         let mut conn = self.client.clone();
-        let deleted: i64 = conn
-            .del(state)
+        let key = format!("oauth:state:{state}");
+        let redirect_to: Option<String> = conn
+            .get_del(&key)
             .await
             .context("failed to consume OAuth state from Redis")?;
-        Ok(deleted > 0)
+        Ok(redirect_to)
     }
 
     /// Add a JWT to the revocation blocklist with a TTL equal to its remaining lifetime.

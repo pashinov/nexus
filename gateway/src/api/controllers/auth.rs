@@ -8,7 +8,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::api::models::auth::{
-    AuthResponse, Claims, OAuthCallbackQuery, OAuthTokenResponse, UserInfo,
+    Claims, OAuthCallbackQuery, OAuthLoginQuery, OAuthTokenResponse, UserInfo,
 };
 use crate::api::state::ApiState;
 
@@ -56,8 +56,11 @@ where
 
 // ── Google ────────────────────────────────────────────────────────────────────
 
-pub async fn login(State(state): State<ApiState>) -> Response {
-    login_impl(state).await.unwrap_or_else(|e| {
+pub async fn login(
+    State(state): State<ApiState>,
+    Query(params): Query<OAuthLoginQuery>,
+) -> Response {
+    login_impl(state, params).await.unwrap_or_else(|e| {
         tracing::error!("OAuth login error: {e:#}");
         (StatusCode::INTERNAL_SERVER_ERROR, "Authentication failed").into_response()
     })
@@ -82,9 +85,9 @@ pub async fn callback(
 
 // ── Impl ────────────────────────────────────────────────────────────────────
 
-pub async fn login_impl(state: ApiState) -> anyhow::Result<Response> {
+pub async fn login_impl(state: ApiState, params: OAuthLoginQuery) -> anyhow::Result<Response> {
     let csrf_state = Uuid::new_v4().to_string();
-    state.store_oauth_state(&csrf_state).await?;
+    state.store_oauth_state(&csrf_state, &params.redirect_to).await?;
 
     tracing::info!("OAuth login initiated");
 
@@ -111,10 +114,13 @@ pub async fn logout_impl(state: ApiState, claims: Claims) -> anyhow::Result<Resp
 }
 
 async fn callback_impl(state: ApiState, params: OAuthCallbackQuery) -> anyhow::Result<Response> {
-    if !state.consume_oauth_state(&params.state).await? {
-        tracing::warn!("OAuth callback rejected: invalid CSRF state");
-        return Ok((StatusCode::BAD_REQUEST, "Invalid state parameter").into_response());
-    }
+    let redirect_to = match state.consume_oauth_state(&params.state).await? {
+        Some(url) => url,
+        None => {
+            tracing::warn!("OAuth callback rejected: invalid CSRF state");
+            return Ok((StatusCode::BAD_REQUEST, "Invalid state parameter").into_response());
+        }
+    };
 
     let secrets = state.secrets();
     let redirect_uri = format!("{}/auth/callback", state.api_config().oauth.base_url);
@@ -155,5 +161,6 @@ async fn callback_impl(state: ApiState, params: OAuthCallbackQuery) -> anyhow::R
     tracing::info!(user_id = %db_user_id, email = %user.email, "user authenticated");
 
     let jwt = state.issue_jwt(&db_user_id.to_string(), &user.email, &user.name)?;
-    Ok(Json(AuthResponse { token: jwt }).into_response())
+    let redirect = format!("{redirect_to}?token={jwt}");
+    Ok(Redirect::to(&redirect).into_response())
 }
