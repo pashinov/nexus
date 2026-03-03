@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT devices.id, devices.client_version, devices.last_seen_at\n            FROM devices\n            JOIN user_devices ON user_devices.device_id = devices.id\n            WHERE user_devices.user_id = $1\n            ORDER BY devices.last_seen_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_seen_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0fef924a626f090541914b9ede261647d2492c2eb50d3101bb1448f7a270ebfc"
+}

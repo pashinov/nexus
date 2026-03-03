@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+use crate::api::models::device::DeviceInfo;
 use crate::sqlx::SqlxClient;
 
 impl SqlxClient {
@@ -20,6 +21,25 @@ impl SqlxClient {
         .await?;
 
         Ok(())
+    }
+
+    /// Get all devices bound to a user.
+    pub async fn get_user_devices(&self, user_id: Uuid) -> anyhow::Result<Vec<DeviceInfo>> {
+        let rows = sqlx::query_as!(
+            DeviceInfo,
+            r#"
+            SELECT devices.id, devices.client_version, devices.last_seen_at
+            FROM devices
+            JOIN user_devices ON user_devices.device_id = devices.id
+            WHERE user_devices.user_id = $1
+            ORDER BY devices.last_seen_at DESC
+            "#,
+            user_id,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
     }
 
     /// Bind a device to a user. Fails if device does not exist.

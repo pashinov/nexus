@@ -167,7 +167,7 @@ where
 {
     axum::Router::new()
         .route("/info", get(controllers::user::info))
-        .route("/devices", post(controllers::device::bind))
+        .route("/devices", get(controllers::device::list).post(controllers::device::bind))
 }
 
 fn internal_router<S>() -> axum::Router<S>

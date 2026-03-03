@@ -26,6 +26,23 @@ pub async fn info(
     }
 }
 
+/// GET /user/devices
+/// List devices bound to the authenticated user.
+pub async fn list(State(state): State<ApiState>, AuthUser(claims): AuthUser) -> impl IntoResponse {
+    let user_id = match claims.sub.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
+    };
+
+    match state.sqlx_client().get_user_devices(user_id).await {
+        Ok(devices) => Json(devices).into_response(),
+        Err(e) => {
+            tracing::error!("failed to get user devices: {e:#}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
 /// POST /user/devices
 /// Bind a device to the authenticated user. Device must exist (be online).
 pub async fn bind(
