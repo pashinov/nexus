@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    restart: always
+    #restart: always
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -12,7 +12,7 @@ services:
       - dokploy-network
 
 volumes:
-  postgres_data: {}
+  postgres_data: { }
 
 networks:
   dokploy-network:

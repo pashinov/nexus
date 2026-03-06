@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    restart: always
+    #restart: always
     volumes:
       - redis_data:/data
     networks:
@@ -16,7 +16,7 @@ services:
     build:
       context: ../../
       dockerfile: gateway/Dockerfile
-    restart: always
+    #restart: always
     ports:
       - "127.0.0.1:8000:8000"
     command: gateway run --config /etc/gateway/config.json

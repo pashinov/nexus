@@ -1,7 +1,7 @@
 services:
   emqx:
     image: emqx:5.8
-    restart: always
+    #restart: always
     ports:
       - "8883:8883"
       - "127.0.0.1:18083:18083"
