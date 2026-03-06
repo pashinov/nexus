@@ -9,7 +9,7 @@ use crate::config::AppConfig;
 use crate::service;
 
 #[derive(Parser)]
-#[clap(name = "emqx-kafka-producer")]
+#[clap(name = "kafka-producer")]
 #[clap(version = version_string())]
 #[clap(subcommand_required = true, arg_required_else_help = true)]
 pub struct App {
@@ -78,9 +78,9 @@ impl CmdRun {
 fn version_string() -> &'static str {
     static STRING: OnceLock<String> = OnceLock::new();
     STRING.get_or_init(|| {
-        format!("(release {EMQX_KAFKA_PRODUCER_VERSION}) (rustc {EMQX_KAFKA_PRODUCER_RUSTC_VERSION})")
+        format!("(release {KAFKA_PRODUCER_VERSION}) (rustc {KAFKA_PRODUCER_RUSTC_VERSION})")
     })
 }
 
-static EMQX_KAFKA_PRODUCER_VERSION: &str = env!("EMQX_KAFKA_PRODUCER_VERSION");
-static EMQX_KAFKA_PRODUCER_RUSTC_VERSION: &str = env!("EMQX_KAFKA_PRODUCER_RUSTC_VERSION");
+static KAFKA_PRODUCER_VERSION: &str = env!("KAFKA_PRODUCER_VERSION");
+static KAFKA_PRODUCER_RUSTC_VERSION: &str = env!("KAFKA_PRODUCER_RUSTC_VERSION");

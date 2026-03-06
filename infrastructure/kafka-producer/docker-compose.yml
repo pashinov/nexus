@@ -1,0 +1,19 @@
+services:
+  kafka-producer:
+    build:
+      context: ../../
+      dockerfile: kafka-producer/Dockerfile
+    restart: always
+    command: kafka-producer run --config /etc/kafka-producer/config.json
+    volumes:
+      - ./config.json:/etc/kafka-producer/config.json:ro
+      - kafka_producer_data:/var/lib/kafka-producer
+    networks:
+      - dokploy-network
+
+volumes:
+  kafka_producer_data: { }
+
+networks:
+  dokploy-network:
+    external: true

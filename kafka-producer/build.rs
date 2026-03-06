@@ -11,8 +11,8 @@ fn main() -> Result<()> {
 
     let rustc_version = rustc_version::version()?;
 
-    println!("cargo:rustc-env=EMQX_KAFKA_PRODUCER_VERSION={app_version}");
-    println!("cargo:rustc-env=EMQX_KAFKA_PRODUCER_RUSTC_VERSION={rustc_version}");
+    println!("cargo:rustc-env=KAFKA_PRODUCER_VERSION={app_version}");
+    println!("cargo:rustc-env=KAFKA_PRODUCER_RUSTC_VERSION={rustc_version}");
     Ok(())
 }
 

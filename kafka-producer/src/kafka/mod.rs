@@ -1,4 +1,6 @@
-use rdkafka::producer::{FutureProducer, FutureRecord};
+use std::time::Duration;
+
+use rdkafka::producer::{FutureProducer, FutureRecord, Producer};
 
 pub use config::KafkaConfig;
 
@@ -26,15 +28,33 @@ impl KafkaProducer {
         Ok(Self { config, producer })
     }
 
-    pub async fn send(&self, key: &str, payload: &str) -> anyhow::Result<()> {
+    /// Sends a message to Kafka, retrying indefinitely until delivered.
+    pub async fn send(&self, key: &str, payload: &str) {
         let topic = &self.config.topic;
-        self.producer
-            .send(
-                FutureRecord::to(topic).key(key).payload(payload),
-                std::time::Duration::ZERO,
-            )
-            .await
-            .map_err(|(e, _)| anyhow::anyhow!(e))?;
-        Ok(())
+        let attempt_interval = Duration::from_millis(self.config.attempt_interval_ms);
+
+        loop {
+            let record = FutureRecord::to(topic).key(key).payload(payload);
+            match self.producer.send_result(record) {
+                Ok(future) => match future.await {
+                    Ok(_) => return,
+                    Err(e) => {
+                        tracing::error!(key, "Kafka delivery error, retrying: {e:?}");
+                        tokio::time::sleep(attempt_interval).await;
+                    }
+                },
+                Err((e, _)) => {
+                    tracing::error!(key, "Kafka send error, retrying: {e:?}");
+                    tokio::time::sleep(attempt_interval).await;
+                }
+            }
+        }
+    }
+}
+
+impl Drop for KafkaProducer {
+    fn drop(&mut self) {
+        tracing::warn!("flushing kafka producer");
+        self.producer.flush(None).ok();
     }
 }

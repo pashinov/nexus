@@ -12,28 +12,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Cache dependencies: copy workspace manifests and create dummy sources
 COPY Cargo.toml Cargo.lock ./
-COPY emqx-kafka-producer/Cargo.toml emqx-kafka-producer/Cargo.toml
-COPY emqx-kafka-producer/build.rs emqx-kafka-producer/build.rs
+COPY kafka-producer/Cargo.toml kafka-producer/Cargo.toml
+COPY kafka-producer/build.rs kafka-producer/build.rs
 COPY gateway/Cargo.toml gateway/Cargo.toml
 COPY gateway/build.rs gateway/build.rs
 COPY utils/Cargo.toml utils/Cargo.toml
 COPY mqtt-client/Cargo.toml mqtt-client/Cargo.toml
 COPY mqtt-client/build.rs mqtt-client/build.rs
 
-RUN mkdir -p emqx-kafka-producer/src gateway/src utils/src mqtt-client/src \
-    && echo "fn main() {}" > emqx-kafka-producer/src/main.rs \
+RUN mkdir -p kafka-producer/src gateway/src utils/src mqtt-client/src \
+    && echo "fn main() {}" > kafka-producer/src/main.rs \
     && echo "fn main() {}" > gateway/src/main.rs \
-    && echo "" > utils/src/lib.rs \
     && echo "fn main() {}" > mqtt-client/src/main.rs \
-    && cargo build --release --locked -p emqx-kafka-producer \
-    && rm -r target/release/deps/emqx_kafka_producer* target/release/deps/nexus_utils* \
-      target/release/.fingerprint/emqx-kafka-producer-* target/release/.fingerprint/nexus-utils-*
+    && echo "" > utils/src/lib.rs \
+    && cargo build --release --locked -p kafka-producer \
+    && rm -r target/release/deps/kafka_producer* target/release/deps/nexus_utils* \
+      target/release/.fingerprint/kafka-producer-* target/release/.fingerprint/nexus-utils-*
 
 # Build the real binary
-COPY emqx-kafka-producer/src emqx-kafka-producer/src
+COPY kafka-producer/src kafka-producer/src
 COPY utils/src utils/src
 
-RUN cargo build --release --locked -p emqx-kafka-producer
+RUN cargo build --release --locked -p kafka-producer
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim
@@ -42,10 +42,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -r -s /bin/false emqx-kafka-producer
+RUN useradd -r -s /bin/false kafka-producer \
+    && mkdir -p /var/lib/kafka-producer \
+    && chown kafka-producer /var/lib/kafka-producer
 
-COPY --from=builder /app/target/release/emqx-kafka-producer /usr/local/bin/emqx-kafka-producer
+COPY --from=builder /app/target/release/kafka-producer /usr/local/bin/kafka-producer
 
-USER emqx-kafka-producer
+USER kafka-producer
 
-CMD ["emqx-kafka-producer", "run"]
+CMD ["kafka-producer", "run"]

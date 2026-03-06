@@ -54,9 +54,7 @@ pub async fn run_service(config: AppConfig) -> anyhow::Result<()> {
     // channel → Kafka producer
     tokio::spawn(async move {
         while let Some((device_id, payload)) = rx.recv().await {
-            if let Err(e) = producer.send(&device_id, &payload).await {
-                tracing::error!(device_id, "Kafka send error: {e:#}");
-            }
+            producer.send(&device_id, &payload).await;
         }
     });
 
@@ -66,9 +64,7 @@ pub async fn run_service(config: AppConfig) -> anyhow::Result<()> {
 fn extract_device_id(topic: &str) -> Option<Uuid> {
     // topic format: devices/{device_id}/...
     match topic.split('/').collect::<Vec<_>>().as_slice() {
-        ["devices", device_id] => Some(device_id),
+        ["devices", device_id, ..] => device_id.parse().ok(),
         _ => None,
     }
-    .map(|x| x.parse().ok())
-    .flatten()
 }

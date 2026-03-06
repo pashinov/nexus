@@ -1446,7 +1446,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "native-tls",
  "nexus-utils",
  "rdkafka",
  "redb",

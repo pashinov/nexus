@@ -15,7 +15,6 @@ path = "./src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-native-tls = { workspace = true }
 redb = { workspace = true }
 rumqttc = { workspace = true }
 serde = { workspace = true }
