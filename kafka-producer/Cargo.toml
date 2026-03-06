@@ -1,0 +1,34 @@
+[package]
+name = "kafka-producer"
+description = ""
+include = ["src/**/*.rs", "./README.md"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kafka-producer"
+path = "./src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+native-tls = { workspace = true }
+redb = { workspace = true }
+rumqttc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+nexus-utils = { workspace = true }
+
+# Kafka — C dependency (librdkafka), cmake-build compiles from source
+rdkafka = { version = "0.39", features = ["cmake-build", "tokio"] }
+
+[build-dependencies]
+anyhow = { workspace = true }
+rustc_version = { workspace = true }

@@ -23,7 +23,13 @@ pub async fn mqtt_service(config: AppConfig) -> anyhow::Result<()> {
         loop {
             interval.tick().await;
             let payload = serde_json::json!({ "version": VERSION }).to_string();
-            if let Err(e) = mqtt_client.publish("client/info", payload.as_bytes()).await {
+            if let Err(e) = mqtt_client
+                .publish(
+                    &format!("devices/{}/info", mqtt_client.client_id()),
+                    payload.as_bytes(),
+                )
+                .await
+            {
                 tracing::error!("failed to publish version: {e:#}");
             }
         }
@@ -42,7 +48,7 @@ pub async fn mqtt_service(config: AppConfig) -> anyhow::Result<()> {
                         "received message"
                     );
 
-                    // TODO: handle device messages
+                    // TODO: handle CTRL commands
                 }
                 Ok(Event::Incoming(Packet::Disconnect)) => {
                     tracing::warn!("disconnected from MQTT broker");
