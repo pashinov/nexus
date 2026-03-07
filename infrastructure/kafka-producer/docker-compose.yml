@@ -1,9 +1,6 @@
 services:
   kafka-producer:
-    build:
-      context: ../../
-      dockerfile: kafka-producer/Dockerfile
-    #restart: always
+    image: pashinov/kafka-producer:latest
     deploy:
       placement:
         constraints:
