@@ -24,8 +24,10 @@ services:
 
   kafka-init:
     image: apache/kafka:latest
-    depends_on:
-      - kafka
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
     command: >
       /opt/kafka/bin/kafka-topics.sh
       --bootstrap-server kafka:9092 --create --if-not-exists
