@@ -2,6 +2,10 @@ services:
   kafka:
     image: apache/kafka:latest
     #restart: always
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller

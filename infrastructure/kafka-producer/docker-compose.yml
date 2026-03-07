@@ -4,6 +4,10 @@ services:
       context: ../../
       dockerfile: kafka-producer/Dockerfile
     #restart: always
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
     command: kafka-producer run --config /etc/kafka-producer/config.json
     volumes:
       - ./config.json:/etc/kafka-producer/config.json:ro
