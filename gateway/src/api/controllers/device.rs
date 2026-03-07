@@ -4,27 +4,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use crate::api::controllers::auth::AuthUser;
-use crate::api::models::device::{BindDeviceRequest, DeviceInfoRequest};
+use crate::api::models::device::BindDeviceRequest;
 use crate::api::state::ApiState;
-
-/// POST /internal/device/info
-/// Called by EMQX Rule Engine when a device publishes telemetry.
-pub async fn info(
-    State(state): State<ApiState>,
-    Json(req): Json<DeviceInfoRequest>,
-) -> impl IntoResponse {
-    match state
-        .sqlx_client()
-        .upsert_device(req.id, &req.client_version)
-        .await
-    {
-        Ok(_) => StatusCode::OK,
-        Err(e) => {
-            tracing::error!("failed to upsert device: {e:#}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
-}
 
 /// GET /user/devices
 /// List devices bound to the authenticated user.

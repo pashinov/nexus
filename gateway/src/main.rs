@@ -7,6 +7,7 @@ use crate::cli::App;
 mod api;
 mod cli;
 mod config;
+mod kafka;
 mod redis;
 mod sqlx;
 

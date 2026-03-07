@@ -2,21 +2,22 @@ services:
   redis:
     image: redis:7-alpine
     #restart: always
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     volumes:
       - redis_data:/data
     networks:
       - dokploy-network
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   gateway:
-    build:
-      context: ../../
-      dockerfile: gateway/Dockerfile
+    image: pashinov/gateway:latest
     #restart: always
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     ports:
       - "127.0.0.1:8000:8000"
     command: gateway run --config /etc/gateway/config.json
@@ -26,13 +27,8 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
       - REDIS_URL=${REDIS_URL}
-    volumes:
-      - ./config.json:/etc/gateway/config.json:ro
     networks:
       - dokploy-network
-    depends_on:
-      redis:
-        condition: service_healthy
 
 volumes:
   redis_data: { }

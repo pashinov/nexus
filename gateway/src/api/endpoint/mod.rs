@@ -51,15 +51,6 @@ impl ApiEndpointBuilder<()> {
             state,
         ))
     }
-
-    pub async fn internal_bind(self, state: ApiState) -> Result<ApiEndpoint> {
-        let listener = state.bind_internal_socket().await?;
-        Ok(ApiEndpoint::from_parts(
-            listener,
-            self.common.internal_build(),
-            state,
-        ))
-    }
 }
 
 struct ApiEndpointBuilderCommon {
@@ -89,20 +80,6 @@ impl ApiEndpointBuilderCommon {
         router
             .nest("/auth", auth_router())
             .nest("/user", user_router())
-    }
-
-    fn internal_build<S>(self) -> axum::Router<S>
-    where
-        ApiState: FromRef<S>,
-        S: Clone + Send + Sync + 'static,
-    {
-        let mut router = axum::Router::new();
-
-        if let Some(route) = self.healthcheck_route {
-            router = router.route(&route, get(health_check));
-        }
-
-        router.nest("/internal", internal_router())
     }
 }
 
@@ -167,15 +144,10 @@ where
 {
     axum::Router::new()
         .route("/info", get(controllers::user::info))
-        .route("/devices", get(controllers::device::list).post(controllers::device::bind))
-}
-
-fn internal_router<S>() -> axum::Router<S>
-where
-    ApiState: FromRef<S>,
-    S: Clone + Send + Sync + 'static,
-{
-    axum::Router::new().route("/device/info", post(controllers::device::info))
+        .route(
+            "/devices",
+            get(controllers::device::list).post(controllers::device::bind),
+        )
 }
 
 fn health_check() -> futures_util::future::Ready<impl IntoResponse> {

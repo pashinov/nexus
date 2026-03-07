@@ -3,6 +3,12 @@ FROM rust:1.91-bookworm AS builder
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
 # Cache dependencies: copy workspace manifests and create dummy sources
 COPY Cargo.toml Cargo.lock ./
 COPY gateway/Cargo.toml gateway/Cargo.toml
@@ -40,9 +46,10 @@ RUN apt-get update \
 RUN useradd -r -s /bin/false gateway
 
 COPY --from=builder /app/target/release/gateway /usr/local/bin/gateway
+COPY infrastructure/gateway/config.json /etc/gateway/config.json
 
 USER gateway
 
-EXPOSE 8000 8001
+EXPOSE 8000
 
 CMD ["gateway", "run"]

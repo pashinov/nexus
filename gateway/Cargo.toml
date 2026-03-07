@@ -22,6 +22,7 @@ jsonwebtoken = { workspace = true }
 redis = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 sqlx = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
@@ -32,6 +33,9 @@ uuid = { workspace = true }
 zeroize = { workspace = true }
 
 nexus-utils = { workspace = true }
+
+# Kafka — C dependency (librdkafka), cmake-build compiles from source
+rdkafka = { version = "0.39", features = ["cmake-build", "tokio"] }
 
 [build-dependencies]
 anyhow = { workspace = true }

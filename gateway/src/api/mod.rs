@@ -32,21 +32,18 @@ pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
         .context("failed to connect to Redis")?;
     tracing::info!("Redis connected");
 
-    tracing::info!(
-        listen_addr = %config.api.listen_addr,
-        internal_listen_addr = %config.api.internal_listen_addr,
-        "API server starting...",
-    );
+    let sqlx_client = SqlxClient::new(pool);
+
+    tracing::info!(listen_addr = %config.api.listen_addr, "API server starting...");
 
     let state = ApiState::builder()
-        .with_config(config)
+        .with_config(config.clone())
         .with_http_client(reqwest::Client::new())
-        .with_sqlx_client(SqlxClient::new(pool))
+        .with_sqlx_client(sqlx_client.clone())
         .with_redis_client(redis_client)
         .build()?;
 
     let endpoint = state.bind_endpoint().await?;
-    let internal_endpoint = state.bind_internal_endpoint().await?;
 
     tokio::task::spawn(async move {
         if let Err(e) = endpoint.serve().await {
@@ -56,10 +53,10 @@ pub async fn http_service(config: AppConfig) -> anyhow::Result<()> {
     });
 
     tokio::task::spawn(async move {
-        if let Err(e) = internal_endpoint.serve().await {
-            tracing::error!("internal API server failed: {e:?}");
+        if let Err(e) = crate::kafka::run_consumer(config.kafka, sqlx_client).await {
+            tracing::error!("Kafka consumer failed: {e:#}");
         }
-        tracing::info!("internal API server stopped");
+        tracing::info!("Kafka consumer stopped");
     });
 
     Ok(())

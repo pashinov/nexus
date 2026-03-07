@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use nexus_utils::logger::LoggerConfig;
 
 use crate::api::config::ApiConfig;
+use crate::kafka::KafkaConfig;
 use crate::redis::RedisConfig;
 use crate::sqlx::PgConfig;
 
@@ -13,6 +14,8 @@ pub struct AppConfig {
     pub postgres: PgConfig,
 
     pub redis: RedisConfig,
+
+    pub kafka: KafkaConfig,
 
     pub logger: LoggerConfig,
 }
