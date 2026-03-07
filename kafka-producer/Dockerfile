@@ -47,6 +47,7 @@ RUN useradd -r -s /bin/false kafka-producer \
     && chown kafka-producer /var/lib/kafka-producer
 
 COPY --from=builder /app/target/release/kafka-producer /usr/local/bin/kafka-producer
+COPY infrastructure/kafka-producer/config.json /etc/kafka-producer/config.json
 
 USER kafka-producer
 

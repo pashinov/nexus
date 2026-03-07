@@ -1,13 +1,13 @@
 services:
   kafka-producer:
     image: pashinov/kafka-producer:latest
+    #restart: always
     deploy:
       placement:
         constraints:
           - node.role == worker
     command: kafka-producer run --config /etc/kafka-producer/config.json
     volumes:
-      - ./config.json:/etc/kafka-producer/config.json:ro
       - kafka_producer_data:/var/lib/kafka-producer
     networks:
       - dokploy-network
