@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use nexus_utils::time::now_sec;
 use reqwest::Client as HttpClient;
 use tokio::net::TcpListener;
@@ -142,10 +142,12 @@ impl ApiState {
     }
 
     pub fn decode_jwt(&self, token: &str) -> Result<Claims> {
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.validate_exp = true;
         decode::<Claims>(
             token,
-            &DecodingKey::from_secret(self.inner.secrets.jwt_secret.as_bytes()),
-            &Validation::default(),
+            &DecodingKey::from_rsa_pem(self.inner.secrets.jwt_public_key.as_bytes())?,
+            &validation,
         )
         .map(|data| data.claims)
         .map_err(Into::into)
@@ -163,11 +165,15 @@ impl ApiState {
         };
 
         encode(
-            &Header::default(),
+            &Header::new(Algorithm::RS256),
             &claims,
-            &EncodingKey::from_secret(self.inner.secrets.jwt_secret.as_bytes()),
+            &EncodingKey::from_rsa_pem(self.inner.secrets.jwt_private_key.as_bytes())?,
         )
         .map_err(Into::into)
+    }
+
+    pub fn jwt_public_key(&self) -> &str {
+        &self.inner.secrets.jwt_public_key
     }
 
     /// Add a JWT to the revocation blocklist for its remaining lifetime.

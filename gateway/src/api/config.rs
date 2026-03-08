@@ -1,6 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddr};
 
 use anyhow::Context;
+use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -61,7 +62,8 @@ impl Default for JwtConfig {
 #[derive(Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct ApiSecrets {
-    pub jwt_secret: String,
+    pub jwt_private_key: String,
+    pub jwt_public_key: String,
     pub client_id: String,
     pub client_secret: String,
 }
@@ -69,9 +71,18 @@ pub struct ApiSecrets {
 impl ApiSecrets {
     pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
-            jwt_secret: std::env::var("JWT_SECRET").context("JWT_SECRET not set")?,
+            jwt_private_key: decode_b64_env("JWT_PRIVATE_KEY")?,
+            jwt_public_key: decode_b64_env("JWT_PUBLIC_KEY")?,
             client_id: std::env::var("CLIENT_ID").context("CLIENT_ID not set")?,
             client_secret: std::env::var("CLIENT_SECRET").context("CLIENT_SECRET not set")?,
         })
     }
+}
+
+fn decode_b64_env(var: &str) -> anyhow::Result<String> {
+    let encoded = std::env::var(var).with_context(|| format!("{var} not set"))?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded.trim())
+        .with_context(|| format!("{var} is not valid base64"))?;
+    String::from_utf8(bytes).with_context(|| format!("{var} is not valid UTF-8"))
 }

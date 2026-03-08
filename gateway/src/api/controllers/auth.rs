@@ -65,6 +65,13 @@ pub async fn login(
     })
 }
 
+pub async fn public_key(State(state): State<ApiState>) -> impl IntoResponse {
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/x-pem-file")],
+        state.jwt_public_key().to_owned(),
+    )
+}
+
 pub async fn logout(State(state): State<ApiState>, AuthUser(claims): AuthUser) -> Response {
     logout_impl(state, claims).await.unwrap_or_else(|e| {
         tracing::error!("Logout error: {e:#}");

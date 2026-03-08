@@ -135,6 +135,7 @@ where
         .route("/", get(controllers::auth::login))
         .route("/callback", get(controllers::auth::callback))
         .route("/logout", post(controllers::auth::logout))
+        .route("/public-key", get(controllers::auth::public_key))
 }
 
 fn user_router<S>() -> axum::Router<S>
