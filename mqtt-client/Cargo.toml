@@ -21,7 +21,10 @@ rumqttc = { workspace = true }
 uuid = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sysinfo = { workspace = true }
+humantime-serde = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "fs"] }
+tokio-util = { workspace = true }
 tracing = { workspace = true }
 
 nexus-utils = { workspace = true }

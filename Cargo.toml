@@ -32,10 +32,13 @@ rustc_version = "0.4.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.114"
 serde_path_to_error = "0.1"
+sysinfo = "0.33"
+humantime-serde = "1"
 sqlx = { version = "0.8.2", features = ["runtime-tokio-native-tls", "postgres", "uuid", "bigdecimal", "chrono", "json"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "timeout", "normalize-path"] }
 tokio = { version = "1", default-features = false }
+tokio-util = "0.7"
 tracing = "0.1"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

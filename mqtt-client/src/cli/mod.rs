@@ -60,18 +60,14 @@ impl CmdRun {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?
-            .block_on(utils::signal::run_or_terminate(self.run_impl(config)))
+            .block_on(utils::signal::run_with_shutdown(|token| self.run_impl(config, token)))
     }
 
-    async fn run_impl(self, config: AppConfig) -> Result<()> {
+    async fn run_impl(self, config: AppConfig, token: tokio_util::sync::CancellationToken) -> Result<()> {
         utils::logger::init_logger(&config.logger, self.logger_config)?;
         utils::logger::set_abort_with_tracing();
 
-        service::mqtt_service(config).await?;
-
-        std::future::pending::<()>().await;
-
-        Ok(())
+        service::mqtt_service(config, token).await
     }
 }
 
