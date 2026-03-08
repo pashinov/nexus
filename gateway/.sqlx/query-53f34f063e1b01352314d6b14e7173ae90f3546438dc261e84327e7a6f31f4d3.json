@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT devices.id, devices.uptime, devices.info, devices.created_at, devices.updated_at\n            FROM devices\n            JOIN user_devices ON user_devices.device_id = devices.id\n            WHERE user_devices.user_id = $1\n            ORDER BY devices.updated_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "uptime",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "info",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "53f34f063e1b01352314d6b14e7173ae90f3546438dc261e84327e7a6f31f4d3"
+}

@@ -12,6 +12,8 @@ pub struct BindDeviceRequest {
 #[derive(Debug, Serialize)]
 pub struct DeviceInfo {
     pub id: Uuid,
-    pub client_version: String,
-    pub last_seen_at: DateTime<Utc>,
+    pub uptime: i64,
+    pub info: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }

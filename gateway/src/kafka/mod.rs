@@ -12,7 +12,9 @@ mod config;
 
 #[derive(Deserialize)]
 struct DevicePayload {
-    client_version: String,
+    uptime: i64,
+    #[serde(flatten)]
+    info: serde_json::Value,
 }
 
 pub async fn run_consumer(config: KafkaConfig, db: SqlxClient) -> anyhow::Result<()> {
@@ -48,8 +50,8 @@ pub async fn run_consumer(config: KafkaConfig, db: SqlxClient) -> anyhow::Result
             .and_then(|s| serde_json::from_str::<DevicePayload>(s).ok());
 
         match (key, payload) {
-            (Some(id), Some(info)) => {
-                if let Err(e) = db.upsert_device(id, &info.client_version).await {
+            (Some(id), Some(payload)) => {
+                if let Err(e) = db.upsert_device(id, payload.uptime, payload.info).await {
                     tracing::error!("failed to upsert device {id}: {e:#}");
                 }
             }

@@ -4,18 +4,25 @@ use crate::api::models::device::DeviceInfo;
 use crate::sqlx::SqlxClient;
 
 impl SqlxClient {
-    /// Insert or update a device. Called on telemetry webhook.
-    pub async fn upsert_device(&self, id: Uuid, client_version: &str) -> anyhow::Result<()> {
+    /// Insert or update a device info.
+    pub async fn upsert_device(
+        &self,
+        id: Uuid,
+        uptime: i64,
+        info: serde_json::Value,
+    ) -> anyhow::Result<()> {
         sqlx::query!(
             r#"
-            INSERT INTO devices (id, client_version, last_seen_at)
-            VALUES ($1, $2, now())
+            INSERT INTO devices (id, uptime, info)
+            VALUES ($1, $2, $3)
             ON CONFLICT (id) DO UPDATE
-                SET client_version = EXCLUDED.client_version,
-                    last_seen_at   = now()
+                SET uptime     = EXCLUDED.uptime,
+                    info       = EXCLUDED.info,
+                    updated_at = now()
             "#,
             id,
-            client_version,
+            uptime,
+            info,
         )
         .execute(&self.pool)
         .await?;
@@ -28,11 +35,11 @@ impl SqlxClient {
         let rows = sqlx::query_as!(
             DeviceInfo,
             r#"
-            SELECT devices.id, devices.client_version, devices.last_seen_at
+            SELECT devices.id, devices.uptime, devices.info, devices.created_at, devices.updated_at
             FROM devices
             JOIN user_devices ON user_devices.device_id = devices.id
             WHERE user_devices.user_id = $1
-            ORDER BY devices.last_seen_at DESC
+            ORDER BY devices.updated_at DESC
             "#,
             user_id,
         )

@@ -2,6 +2,7 @@ use std::future::Future;
 
 use anyhow::Result;
 use tokio::signal::unix;
+use tokio_util::sync::CancellationToken;
 
 pub const TERMINATION_SIGNALS: [libc::c_int; 5] = [
     libc::SIGINT,
@@ -25,6 +26,28 @@ where
                 Ok(())
             }
             Err(e) => Err(e.into()),
+        }
+    }
+}
+
+pub async fn run_with_shutdown<F>(f: impl FnOnce(CancellationToken) -> F) -> Result<()>
+where
+    F: Future<Output = Result<()>> + Send + 'static,
+{
+    let token = CancellationToken::new();
+    let run_fut = tokio::spawn(f(token.clone()));
+    let stop_fut = any_signal(TERMINATION_SIGNALS);
+    tokio::select! {
+        res = run_fut => res?,
+        signal = stop_fut => {
+            let res = match signal {
+                Ok(signal) => {
+                    tracing::info!(?signal, "received termination signal"); Ok(())
+                },
+                Err(e) => Err(e.into()),
+            };
+            token.cancel();
+            res
         }
     }
 }

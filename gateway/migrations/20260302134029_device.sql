@@ -1,8 +1,10 @@
 CREATE TABLE devices
 (
-    id             UUID PRIMARY KEY,
-    client_version TEXT        NOT NULL,
-    last_seen_at   TIMESTAMPTZ NOT NULL
+    id         UUID PRIMARY KEY,
+    uptime     BIGINT      NOT NULL,
+    info       JSONB       NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE user_devices
