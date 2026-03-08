@@ -41,7 +41,7 @@ pub async fn handle(client: &MqttClient, device_id: &str, payload: &[u8]) {
             })
             .expect("shouldn't fail");
 
-            let topic = format!("devices/{device_id}/command/ack");
+            let topic = format!("device/{device_id}/command/ack");
             if let Err(e) = client.publish(&topic, ack.as_bytes()).await {
                 tracing::error!("failed to publish ack: {e:#}");
             }

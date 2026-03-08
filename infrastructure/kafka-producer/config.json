@@ -9,5 +9,5 @@
   "storage": {
     "db_path": "/var/lib/kafka-producer/client.db"
   },
-  "mqtt_topic": "devices/#"
+  "mqtt_topic": "device/#"
 }

@@ -62,9 +62,9 @@ pub async fn run_service(config: AppConfig) -> anyhow::Result<()> {
 }
 
 fn extract_device_id(topic: &str) -> Option<Uuid> {
-    // topic format: devices/{device_id}/...
+    // topic format: device/{device_id}/...
     match topic.split('/').collect::<Vec<_>>().as_slice() {
-        ["devices", device_id, ..] => device_id.parse().ok(),
+        ["device", device_id, ..] => device_id.parse().ok(),
         _ => None,
     }
 }
