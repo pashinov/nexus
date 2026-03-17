@@ -178,7 +178,7 @@ impl ApiState {
 
     /// Add a JWT to the revocation blocklist for its remaining lifetime.
     pub async fn revoke_jwt(&self, claims: &Claims) -> anyhow::Result<()> {
-        let remaining = claims.exp.saturating_sub(now_sec()) as u64;
+        let remaining = claims.exp.saturating_sub(now_sec());
         if remaining == 0 {
             return Ok(());
         }

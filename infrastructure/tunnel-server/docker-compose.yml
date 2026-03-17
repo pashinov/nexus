@@ -1,7 +1,6 @@
 services:
   redis:
     image: redis:7-alpine
-    #restart: always
     deploy:
       placement:
         constraints:
@@ -11,27 +10,24 @@ services:
     networks:
       - dokploy-network
 
-  gateway:
-    image: pashinov/gateway:latest
-    #restart: always
+  tunnel-server:
+    image: pashinov/tunnel-server:latest
     deploy:
       placement:
         constraints:
           - node.role == manager
     ports:
-      - "127.0.0.1:8000:8000"
-    command: gateway run --config /etc/gateway/config.json
+      - "127.0.0.1:8001:8001"
+    command: tunnel-server run --config /etc/tunnel-server/config.json
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
       - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
-      - CLIENT_ID=${CLIENT_ID}
-      - CLIENT_SECRET=${CLIENT_SECRET}
+    depends_on:
+      - redis
     networks:
       - dokploy-network
 
 volumes:
-  redis_data: { }
+  redis_data: {}
 
 networks:
   dokploy-network:

@@ -4,13 +4,12 @@ use std::sync::OnceLock;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use nexus_utils as utils;
-use tokio_util::sync::CancellationToken;
 
-use crate::api;
 use crate::config::AppConfig;
+use crate::service;
 
 #[derive(Parser)]
-#[clap(name = "gateway")]
+#[clap(name = "tunnel-client")]
 #[clap(version = version_string())]
 #[clap(subcommand_required = true, arg_required_else_help = true)]
 pub struct App {
@@ -53,7 +52,7 @@ impl CmdRun {
     fn run(self) -> Result<()> {
         let config: AppConfig = match self.config.as_ref() {
             Some(path) => {
-                utils::serde::load_json_from_file(path).context("failed to load node config")?
+                utils::serde::load_json_from_file(path).context("failed to load config")?
             }
             None => AppConfig::default(),
         };
@@ -66,18 +65,19 @@ impl CmdRun {
             }))
     }
 
-    async fn run_impl(self, config: AppConfig, token: CancellationToken) -> Result<()> {
+    async fn run_impl(self, config: AppConfig, token: tokio_util::sync::CancellationToken) -> Result<()> {
         utils::logger::init_logger(&config.logger, self.logger_config)?;
         utils::logger::set_abort_with_tracing();
 
-        api::http_service(config, token).await
+        service::tunnel_service(config, token).await
     }
 }
 
 fn version_string() -> &'static str {
     static STRING: OnceLock<String> = OnceLock::new();
-    STRING.get_or_init(|| format!("(release {GATEWAY_VERSION}) (rustc {RUSTC_VERSION})"))
+    STRING
+        .get_or_init(|| format!("(release {TUNNEL_CLIENT_VERSION}) (rustc {TUNNEL_CLIENT_RUSTC_VERSION})"))
 }
 
-static GATEWAY_VERSION: &str = env!("GATEWAY_VERSION");
-static RUSTC_VERSION: &str = env!("GATEWAY_RUSTC_VERSION");
+static TUNNEL_CLIENT_VERSION: &str = env!("TUNNEL_CLIENT_VERSION");
+static TUNNEL_CLIENT_RUSTC_VERSION: &str = env!("TUNNEL_CLIENT_RUSTC_VERSION");

@@ -1,0 +1,12 @@
+{
+  "api": {
+    "listen_addr": "0.0.0.0:8001",
+    "tunnel_scheme": "https",
+    "tunnel_domain": "tunnel.apashinov.com",
+    "session_ttl": 3600,
+    "cors_origins": []
+  },
+  "redis": {
+    "url": "redis://redis:6379"
+  }
+}

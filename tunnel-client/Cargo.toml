@@ -1,0 +1,33 @@
+[package]
+name = "tunnel-client"
+description = "Device-side WebSocket tunnel client"
+include = ["src/**/*.rs"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "tunnel-client"
+path = "./src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = { workspace = true }
+clap = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tokio-tungstenite = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+nexus-utils = { workspace = true }
+
+[build-dependencies]
+anyhow = { workspace = true }
+rustc_version = { workspace = true }

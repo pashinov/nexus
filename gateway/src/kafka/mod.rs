@@ -2,6 +2,7 @@ use futures_util::StreamExt;
 use rdkafka::Message;
 use rdkafka::consumer::{CommitMode, Consumer, StreamConsumer};
 use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 pub use config::KafkaConfig;
@@ -17,7 +18,11 @@ struct DevicePayload {
     info: serde_json::Value,
 }
 
-pub async fn run_consumer(config: KafkaConfig, db: SqlxClient) -> anyhow::Result<()> {
+pub async fn run_consumer(
+    config: KafkaConfig,
+    db: SqlxClient,
+    token: CancellationToken,
+) -> anyhow::Result<()> {
     let consumer: StreamConsumer = rdkafka::config::ClientConfig::new()
         .set("bootstrap.servers", &config.brokers)
         .set("group.id", &config.group_id)
@@ -30,37 +35,44 @@ pub async fn run_consumer(config: KafkaConfig, db: SqlxClient) -> anyhow::Result
 
     let mut stream = consumer.stream();
 
-    while let Some(result) = stream.next().await {
-        let msg = match result {
-            Err(e) => {
-                tracing::error!("Kafka consumer error: {e}");
-                continue;
-            }
-            Ok(msg) => msg,
-        };
+    loop {
+        tokio::select! {
+            _ = token.cancelled() => break,
+            item = stream.next() => {
+                let Some(result) = item else { break };
 
-        let key = msg
-            .key()
-            .and_then(|k| std::str::from_utf8(k).ok())
-            .and_then(|s| s.parse::<Uuid>().ok());
+                let msg = match result {
+                    Err(e) => {
+                        tracing::error!("Kafka consumer error: {e}");
+                        continue;
+                    }
+                    Ok(msg) => msg,
+                };
 
-        let payload = msg
-            .payload()
-            .and_then(|p| std::str::from_utf8(p).ok())
-            .and_then(|s| serde_json::from_str::<DevicePayload>(s).ok());
+                let key = msg
+                    .key()
+                    .and_then(|k| std::str::from_utf8(k).ok())
+                    .and_then(|s| s.parse::<Uuid>().ok());
 
-        match (key, payload) {
-            (Some(id), Some(payload)) => {
-                if let Err(e) = db.upsert_device(id, payload.uptime, payload.info).await {
-                    tracing::error!("failed to upsert device {id}: {e:#}");
+                let payload = msg
+                    .payload()
+                    .and_then(|p| std::str::from_utf8(p).ok())
+                    .and_then(|s| serde_json::from_str::<DevicePayload>(s).ok());
+
+                match (key, payload) {
+                    (Some(id), Some(payload)) => {
+                        if let Err(e) = db.upsert_device(id, payload.uptime, payload.info).await {
+                            tracing::error!("failed to upsert device {id}: {e:#}");
+                        }
+                    }
+                    _ => {
+                        tracing::warn!("invalid Kafka message, skipping");
+                    }
                 }
-            }
-            _ => {
-                tracing::warn!("invalid Kafka message, skipping");
+
+                consumer.commit_message(&msg, CommitMode::Async).ok();
             }
         }
-
-        consumer.commit_message(&msg, CommitMode::Async).ok();
     }
 
     Ok(())

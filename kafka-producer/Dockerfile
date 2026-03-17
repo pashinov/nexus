@@ -19,11 +19,17 @@ COPY gateway/build.rs gateway/build.rs
 COPY utils/Cargo.toml utils/Cargo.toml
 COPY mqtt-client/Cargo.toml mqtt-client/Cargo.toml
 COPY mqtt-client/build.rs mqtt-client/build.rs
+COPY tunnel-server/Cargo.toml tunnel-server/Cargo.toml
+COPY tunnel-server/build.rs tunnel-server/build.rs
+COPY tunnel-client/Cargo.toml tunnel-client/Cargo.toml
+COPY tunnel-client/build.rs tunnel-client/build.rs
 
-RUN mkdir -p kafka-producer/src gateway/src utils/src mqtt-client/src \
+RUN mkdir -p kafka-producer/src gateway/src utils/src mqtt-client/src tunnel-server/src tunnel-client/src \
     && echo "fn main() {}" > kafka-producer/src/main.rs \
     && echo "fn main() {}" > gateway/src/main.rs \
     && echo "fn main() {}" > mqtt-client/src/main.rs \
+    && echo "fn main() {}" > tunnel-server/src/main.rs \
+    && echo "fn main() {}" > tunnel-client/src/main.rs \
     && echo "" > utils/src/lib.rs \
     && cargo build --release --locked -p kafka-producer \
     && rm -r target/release/deps/kafka_producer* target/release/deps/nexus_utils* \

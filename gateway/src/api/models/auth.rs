@@ -21,7 +21,7 @@ pub struct Claims {
     pub email: String,
     pub name: String,
     /// Expiration timestamp (Unix seconds).
-    pub exp: u32,
+    pub exp: u64,
     /// Unique token ID used for revocation.
     pub jti: String,
 }

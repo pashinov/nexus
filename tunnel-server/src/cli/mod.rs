@@ -10,7 +10,7 @@ use crate::api;
 use crate::config::AppConfig;
 
 #[derive(Parser)]
-#[clap(name = "gateway")]
+#[clap(name = "tunnel-server")]
 #[clap(version = version_string())]
 #[clap(subcommand_required = true, arg_required_else_help = true)]
 pub struct App {
@@ -53,7 +53,7 @@ impl CmdRun {
     fn run(self) -> Result<()> {
         let config: AppConfig = match self.config.as_ref() {
             Some(path) => {
-                utils::serde::load_json_from_file(path).context("failed to load node config")?
+                utils::serde::load_json_from_file(path).context("failed to load config")?
             }
             None => AppConfig::default(),
         };
@@ -76,8 +76,10 @@ impl CmdRun {
 
 fn version_string() -> &'static str {
     static STRING: OnceLock<String> = OnceLock::new();
-    STRING.get_or_init(|| format!("(release {GATEWAY_VERSION}) (rustc {RUSTC_VERSION})"))
+    STRING.get_or_init(|| {
+        format!("(release {TUNNEL_SERVER_VERSION}) (rustc {TUNNEL_SERVER_RUSTC_VERSION})")
+    })
 }
 
-static GATEWAY_VERSION: &str = env!("GATEWAY_VERSION");
-static RUSTC_VERSION: &str = env!("GATEWAY_RUSTC_VERSION");
+static TUNNEL_SERVER_VERSION: &str = env!("TUNNEL_SERVER_VERSION");
+static TUNNEL_SERVER_RUSTC_VERSION: &str = env!("TUNNEL_SERVER_RUSTC_VERSION");

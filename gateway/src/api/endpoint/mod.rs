@@ -6,6 +6,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::normalize_path::NormalizePathLayer;
 
 use crate::api::controllers;
@@ -45,10 +47,12 @@ impl ApiEndpointBuilder<()> {
 
     pub async fn bind(self, state: ApiState) -> Result<ApiEndpoint> {
         let listener = state.bind_socket().await?;
+        let origins = state.api_config().cors_origins.clone();
         Ok(ApiEndpoint::from_parts(
             listener,
             self.common.build(),
             state,
+            &origins,
         ))
     }
 }
@@ -93,19 +97,22 @@ impl ApiEndpoint {
         ApiEndpointBuilder::default()
     }
 
-    pub fn from_parts<S>(listener: TcpListener, router: axum::Router<S>, state: S) -> Self
+    pub fn from_parts<S>(
+        listener: TcpListener,
+        router: axum::Router<S>,
+        state: S,
+        origins: &[String],
+    ) -> Self
     where
         S: Clone + Send + Sync + 'static,
     {
         use tower::ServiceBuilder;
-        use tower_http::cors::CorsLayer;
         use tower_http::timeout::TimeoutLayer;
 
-        // Prepare middleware
         let service = ServiceBuilder::new()
             .layer(DefaultBodyLimit::max(MAX_REQUEST_SIZE))
             .layer(NormalizePathLayer::trim_trailing_slash())
-            .layer(CorsLayer::permissive())
+            .layer(build_cors(origins))
             .layer(TimeoutLayer::with_status_code(
                 StatusCode::REQUEST_TIMEOUT,
                 Duration::from_secs(25),
@@ -121,8 +128,10 @@ impl ApiEndpoint {
         Self { listener, router }
     }
 
-    pub async fn serve(self) -> std::io::Result<()> {
-        axum::serve(self.listener, self.router).await
+    pub async fn serve(self, token: CancellationToken) -> std::io::Result<()> {
+        axum::serve(self.listener, self.router)
+            .with_graceful_shutdown(async move { token.cancelled().await })
+            .await
     }
 }
 
@@ -162,3 +171,19 @@ fn health_check() -> futures_util::future::Ready<impl IntoResponse> {
 }
 
 const MAX_REQUEST_SIZE: usize = 2 << 17; // 256kb
+
+fn build_cors(origins: &[String]) -> CorsLayer {
+    if origins.is_empty() {
+        return CorsLayer::permissive();
+    }
+
+    let origins: Vec<axum::http::HeaderValue> = origins
+        .iter()
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any)
+}
