@@ -11,7 +11,7 @@ mod system;
 pub async fn mqtt_service(config: AppConfig, token: CancellationToken) -> anyhow::Result<()> {
     let storage = Storage::open(&config.storage)?;
 
-    tracing::info!(host = %config.mqtt.host, port = config.mqtt.port, "connecting to MQTT broker");
+    tracing::info!(host = %config.mqtt.host, port = config.mqtt.port, "MQTT broker connecting");
 
     let (mqtt_client, mut eventloop) = MqttClient::builder()
         .with_config(config.mqtt)
@@ -57,7 +57,7 @@ pub async fn mqtt_service(config: AppConfig, token: CancellationToken) -> anyhow
                     result = eventloop.poll() => {
                         match result {
                             Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                                tracing::info!("connected to MQTT broker");
+                                tracing::info!("MQTT broker connected");
                             }
                             Ok(Event::Incoming(Packet::Publish(publish))) => {
                                 tracing::info!(
@@ -68,11 +68,11 @@ pub async fn mqtt_service(config: AppConfig, token: CancellationToken) -> anyhow
                                 command::handle(&mqtt_client, &mqtt_client.client_id().to_string(), &publish.payload).await;
                             }
                             Ok(Event::Incoming(Packet::Disconnect)) => {
-                                tracing::warn!("disconnected from MQTT broker");
+                                tracing::warn!("MQTT broker disconnected");
                             }
                             Ok(_) => {}
-                            Err(e) => {
-                                tracing::error!("MQTT connection error: {e:#}");
+                            Err(err) => {
+                                tracing::error!("MQTT broker connection error: {err:#}");
                             }
                         }
                     }
@@ -84,6 +84,8 @@ pub async fn mqtt_service(config: AppConfig, token: CancellationToken) -> anyhow
     });
 
     let _ = tokio::join!(pub_handler, sub_handler);
+
+    tracing::info!("mqtt-client stopped");
 
     Ok(())
 }

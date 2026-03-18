@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 
 use crate::api::endpoint::TunnelEndpoint;
 use crate::config::{ApiConfig, AppConfig, AppSecrets};
@@ -22,9 +23,9 @@ pub struct Claims {
 
 // ── Builder ───────────────────────────────────────────────────────────────
 
-pub struct TunnelStateBuilder<R = RedisClient> {
+pub struct TunnelStateBuilder<MandatoryFields = (CancellationToken, RedisClient)> {
     config: AppConfig,
-    mandatory_fields: R,
+    mandatory_fields: MandatoryFields,
 }
 
 impl TunnelStateBuilder {
@@ -33,29 +34,49 @@ impl TunnelStateBuilder {
         let decoding_key = DecodingKey::from_rsa_pem(secrets.jwt_public_key.as_bytes())
             .context("invalid JWT public key")?;
 
+        let (shutdown, redis_client) = self.mandatory_fields;
+
         Ok(TunnelState {
             inner: Arc::new(Inner {
                 config: self.config,
                 decoding_key,
                 registry: Arc::new(DeviceRegistry::new()),
-                redis_client: self.mandatory_fields,
+                redis_client,
+                shutdown,
             }),
         })
     }
 }
 
-impl<R> TunnelStateBuilder<R> {
-    pub fn with_config(self, config: AppConfig) -> TunnelStateBuilder<R> {
-        TunnelStateBuilder { config, ..self }
+impl<T1> TunnelStateBuilder<(T1, ())> {
+    pub fn with_redis_client(
+        self,
+        redis_client: RedisClient,
+    ) -> TunnelStateBuilder<(T1, RedisClient)> {
+        let (shutdown, _) = self.mandatory_fields;
+        TunnelStateBuilder {
+            config: self.config,
+            mandatory_fields: (shutdown, redis_client),
+        }
     }
 }
 
-impl TunnelStateBuilder<()> {
-    pub fn with_redis_client(self, redis_client: RedisClient) -> TunnelStateBuilder<RedisClient> {
+impl<T2> TunnelStateBuilder<((), T2)> {
+    pub fn with_shutdown(
+        self,
+        shutdown: CancellationToken,
+    ) -> TunnelStateBuilder<(CancellationToken, T2)> {
+        let (_, redis_client) = self.mandatory_fields;
         TunnelStateBuilder {
             config: self.config,
-            mandatory_fields: redis_client,
+            mandatory_fields: (shutdown, redis_client),
         }
+    }
+}
+
+impl<T1, T2> TunnelStateBuilder<(T1, T2)> {
+    pub fn with_config(self, config: AppConfig) -> TunnelStateBuilder<(T1, T2)> {
+        TunnelStateBuilder { config, ..self }
     }
 }
 
@@ -68,10 +89,10 @@ pub struct TunnelState {
 }
 
 impl TunnelState {
-    pub fn builder() -> TunnelStateBuilder<()> {
+    pub fn builder() -> TunnelStateBuilder<((), ())> {
         TunnelStateBuilder {
             config: AppConfig::default(),
-            mandatory_fields: (),
+            mandatory_fields: ((), ()),
         }
     }
 
@@ -99,6 +120,10 @@ impl TunnelState {
         TcpListener::bind(self.api_config().listen_addr).await
     }
 
+    pub fn shutdown_token(&self) -> CancellationToken {
+        self.inner.shutdown.clone()
+    }
+
     pub async fn bind_endpoint(&self) -> Result<TunnelEndpoint> {
         TunnelEndpoint::builder().bind(self.clone()).await
     }
@@ -109,4 +134,5 @@ struct Inner {
     decoding_key: DecodingKey,
     registry: Arc<DeviceRegistry>,
     redis_client: RedisClient,
+    shutdown: CancellationToken,
 }

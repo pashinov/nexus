@@ -27,6 +27,14 @@ pub struct ApiConfig {
     pub tunnel_domain: String,
     /// Session token TTL in seconds.
     pub session_ttl: u64,
+    /// Maximum number of concurrent active streams per connected device.
+    pub max_concurrent_streams_per_device: usize,
+    /// Maximum frame chunk size for request and response bodies.
+    pub max_chunk_size_bytes: usize,
+    /// Channel capacity used for per-stream response buffering.
+    pub stream_channel_capacity: usize,
+    /// Maximum seconds to wait for the first response head frame.
+    pub response_head_timeout_secs: u64,
     /// CORS allowed origins. Empty = permissive (all origins allowed).
     pub cors_origins: Vec<String>,
 }
@@ -38,6 +46,10 @@ impl Default for ApiConfig {
             tunnel_scheme: "http".to_owned(),
             tunnel_domain: "localhost:8001".to_owned(),
             session_ttl: 3600,
+            max_concurrent_streams_per_device: 64,
+            max_chunk_size_bytes: 64 * 1024,
+            stream_channel_capacity: 16,
+            response_head_timeout_secs: 30,
             cors_origins: vec![],
         }
     }

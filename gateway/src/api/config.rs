@@ -38,7 +38,6 @@ pub struct OAuthConfig {
     ///
     /// Example: `https://api.apashinov.com`
     pub base_url: String,
-
 }
 
 impl Default for OAuthConfig {

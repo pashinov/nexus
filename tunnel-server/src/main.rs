@@ -7,7 +7,6 @@ use crate::cli::App;
 mod api;
 mod cli;
 mod config;
-mod models;
 mod redis;
 mod registry;
 mod state;

@@ -23,7 +23,10 @@ pub async fn http_service(config: AppConfig, token: CancellationToken) -> anyhow
     tracing::info!("PostgreSQL connected");
 
     tracing::info!("running database migrations");
-    sqlx::migrate!("./migrations").run(&pool).await.context("failed to run database migrations")?;
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .context("failed to run database migrations")?;
     tracing::info!("database migrations complete");
 
     tracing::info!("connecting to Redis...");
@@ -66,6 +69,8 @@ pub async fn http_service(config: AppConfig, token: CancellationToken) -> anyhow
     });
 
     let _ = tokio::join!(api_handle, kafka_handle);
+
+    tracing::info!("gateway stopped");
 
     Ok(())
 }

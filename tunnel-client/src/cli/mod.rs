@@ -65,7 +65,11 @@ impl CmdRun {
             }))
     }
 
-    async fn run_impl(self, config: AppConfig, token: tokio_util::sync::CancellationToken) -> Result<()> {
+    async fn run_impl(
+        self,
+        config: AppConfig,
+        token: tokio_util::sync::CancellationToken,
+    ) -> Result<()> {
         utils::logger::init_logger(&config.logger, self.logger_config)?;
         utils::logger::set_abort_with_tracing();
 
@@ -75,8 +79,9 @@ impl CmdRun {
 
 fn version_string() -> &'static str {
     static STRING: OnceLock<String> = OnceLock::new();
-    STRING
-        .get_or_init(|| format!("(release {TUNNEL_CLIENT_VERSION}) (rustc {TUNNEL_CLIENT_RUSTC_VERSION})"))
+    STRING.get_or_init(|| {
+        format!("(release {TUNNEL_CLIENT_VERSION}) (rustc {TUNNEL_CLIENT_RUSTC_VERSION})")
+    })
 }
 
 static TUNNEL_CLIENT_VERSION: &str = env!("TUNNEL_CLIENT_VERSION");

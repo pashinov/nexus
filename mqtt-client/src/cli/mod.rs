@@ -60,10 +60,16 @@ impl CmdRun {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?
-            .block_on(utils::signal::run_with_shutdown(|token| self.run_impl(config, token)))
+            .block_on(utils::signal::run_with_shutdown(|token| {
+                self.run_impl(config, token)
+            }))
     }
 
-    async fn run_impl(self, config: AppConfig, token: tokio_util::sync::CancellationToken) -> Result<()> {
+    async fn run_impl(
+        self,
+        config: AppConfig,
+        token: tokio_util::sync::CancellationToken,
+    ) -> Result<()> {
         utils::logger::init_logger(&config.logger, self.logger_config)?;
         utils::logger::set_abort_with_tracing();
 

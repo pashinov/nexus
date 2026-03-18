@@ -24,10 +24,15 @@ impl MqttClientBuilder {
 
         let ca = std::fs::read(&config.ca_cert)
             .with_context(|| format!("failed to read CA cert: {}", config.ca_cert.display()))?;
-        let cert = std::fs::read(&config.client_cert)
-            .with_context(|| format!("failed to read client cert: {}", config.client_cert.display()))?;
-        let key = std::fs::read(&config.client_key)
-            .with_context(|| format!("failed to read client key: {}", config.client_key.display()))?;
+        let cert = std::fs::read(&config.client_cert).with_context(|| {
+            format!(
+                "failed to read client cert: {}",
+                config.client_cert.display()
+            )
+        })?;
+        let key = std::fs::read(&config.client_key).with_context(|| {
+            format!("failed to read client key: {}", config.client_key.display())
+        })?;
 
         let connector = native_tls::TlsConnector::builder()
             .add_root_certificate(
@@ -46,7 +51,12 @@ impl MqttClientBuilder {
 
         let (client, event_loop) = AsyncClient::new(opts, config.channel_capacity);
 
-        Ok((MqttClient { inner: Arc::new(Inner { client, client_id }) }, event_loop))
+        Ok((
+            MqttClient {
+                inner: Arc::new(Inner { client, client_id }),
+            },
+            event_loop,
+        ))
     }
 }
 

@@ -35,19 +35,17 @@ where
     F: Future<Output = Result<()>> + Send + 'static,
 {
     let token = CancellationToken::new();
-    let run_fut = tokio::spawn(f(token.clone()));
     let stop_fut = any_signal(TERMINATION_SIGNALS);
+    let mut run_fut = tokio::spawn(f(token.clone()));
     tokio::select! {
-        res = run_fut => res?,
+        res = &mut run_fut => res?,
         signal = stop_fut => {
-            let res = match signal {
-                Ok(signal) => {
-                    tracing::info!(?signal, "received termination signal"); Ok(())
-                },
-                Err(e) => Err(e.into()),
+            match signal {
+                Ok(signal) => tracing::info!(?signal, "received termination signal"),
+                Err(e) => return Err(e.into()),
             };
             token.cancel();
-            res
+            run_fut.await?
         }
     }
 }

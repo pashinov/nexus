@@ -1,14 +1,10 @@
-use std::time::Duration;
-
 use anyhow::Result;
-use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::timeout::TimeoutLayer;
 
 use crate::api::controllers;
 use crate::state::TunnelState;
@@ -81,13 +77,7 @@ impl TunnelEndpoint {
     where
         S: Clone + Send + Sync + 'static,
     {
-        let service =
-            ServiceBuilder::new()
-                .layer(build_cors(origins))
-                .layer(TimeoutLayer::with_status_code(
-                    StatusCode::REQUEST_TIMEOUT,
-                    Duration::from_secs(30),
-                ));
+        let service = ServiceBuilder::new().layer(build_cors(origins));
 
         let router = router.layer(service).with_state(state);
 

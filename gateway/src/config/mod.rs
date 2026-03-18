@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use nexus_utils::logger::LoggerConfig;
+use serde::{Deserialize, Serialize};
 
 use crate::api::config::ApiConfig;
 use crate::kafka::KafkaConfig;

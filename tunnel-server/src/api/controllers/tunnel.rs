@@ -1,17 +1,22 @@
-use std::collections::HashMap;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
 use std::time::Duration;
 
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::body::Body;
+use axum::extract::{Path, Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use base64::Engine as _;
+use bytes::Bytes;
+use futures_util::StreamExt;
+use nexus_utils::tunnel::{Frame, Headers};
 use serde::Serialize;
-use tokio::sync::oneshot;
+use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
 use crate::api::controllers::auth::AuthUser;
-use crate::models::{TunnelRequest, TunnelResponse};
+use crate::registry::{DeviceSession, ResponseHead, StreamRegistration};
 use crate::state::TunnelState;
 
 #[derive(Debug, Serialize)]
@@ -19,7 +24,6 @@ pub struct SessionResponse {
     pub url: String,
 }
 
-/// POST /tunnel/{device_id}/session
 pub async fn create_session(
     AuthUser(_claims): AuthUser,
     Path(device_id): Path<Uuid>,
@@ -31,12 +35,12 @@ pub async fn create_session(
 
     let session_token = Uuid::new_v4().to_string();
     let ttl = state.api_config().session_ttl;
-    if let Err(e) = state
+    if let Err(err) = state
         .redis()
         .store_session(&session_token, &device_id.to_string(), ttl)
         .await
     {
-        tracing::error!("failed to store session: {e}");
+        tracing::error!("failed to store session: {err}");
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             "failed to create session",
@@ -51,17 +55,9 @@ pub async fn create_session(
     Json(SessionResponse { url }).into_response()
 }
 
-/// Catch-all proxy handler — token is extracted from the Host header.
-pub async fn proxy(
-    State(state): State<TunnelState>,
-    method: axum::http::Method,
-    headers: HeaderMap,
-    uri: axum::http::Uri,
-    body: axum::body::Bytes,
-) -> Response {
-    // Extract token from subdomain: "{token}.localhost:8001" → "{token}"
-    let token = match extract_token(&headers, &state.api_config().tunnel_domain) {
-        Some(t) => t,
+pub async fn proxy(State(state): State<TunnelState>, req: Request) -> Response {
+    let token = match extract_token(req.headers(), &state.api_config().tunnel_domain) {
+        Some(token) => token,
         None => return (StatusCode::BAD_REQUEST, "missing or invalid Host header").into_response(),
     };
 
@@ -73,99 +69,141 @@ pub async fn proxy(
             }
         },
         Ok(None) => return (StatusCode::NOT_FOUND, "session not found").into_response(),
-        Err(e) => {
-            tracing::error!("redis error: {e}");
+        Err(err) => {
+            tracing::error!("redis error: {err}");
             return (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response();
         }
     };
 
-    if !state.registry().is_online(device_id) {
+    let Some(session) = state.registry().get(device_id) else {
+        return (StatusCode::SERVICE_UNAVAILABLE, "device not connected").into_response();
+    };
+
+    let stream_id = Uuid::new_v4();
+    let registration =
+        match session.register_stream(stream_id, state.api_config().stream_channel_capacity) {
+            Ok(registration) => registration,
+            Err(err) => {
+                tracing::warn!(%device_id, "failed to register stream: {err:#}");
+                return (StatusCode::SERVICE_UNAVAILABLE, "device is overloaded").into_response();
+            }
+        };
+
+    let (parts, body) = req.into_parts();
+    let content_length = parts
+        .headers
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok()?.parse().ok());
+
+    let open_frame = Frame::OpenStream {
+        stream_id,
+        method: parts.method,
+        path_and_query: parts
+            .uri
+            .path_and_query()
+            .cloned()
+            .unwrap_or_else(|| "/".parse().expect("root path_and_query")),
+        headers: sanitized_headers(parts.headers),
+        content_length,
+    };
+
+    if let Err(err) = session.send_frame(open_frame).await {
+        tracing::warn!(%device_id, %stream_id, "failed to send stream open: {err:#}");
+        session.cancel_stream(stream_id).await;
         return (StatusCode::SERVICE_UNAVAILABLE, "device not connected").into_response();
     }
 
-    let path = uri
-        .path_and_query()
-        .map(|p| p.as_str())
-        .unwrap_or("/")
-        .to_owned();
+    let session_for_body = session.clone();
+    let max_chunk_size = state.api_config().max_chunk_size_bytes;
+    tokio::spawn(async move {
+        if let Err(err) =
+            forward_request_body(&session_for_body, stream_id, body, max_chunk_size).await
+        {
+            tracing::warn!(%stream_id, "request body forwarding failed: {err:#}");
+            session_for_body.cancel_stream(stream_id).await;
+        }
+    });
 
-    let body_b64 = if body.is_empty() {
-        None
-    } else {
-        Some(base64::engine::general_purpose::STANDARD.encode(&body))
-    };
+    build_streaming_response(state, session, stream_id, registration).await
+}
 
-    let req_headers: HashMap<String, String> = headers
-        .iter()
-        .filter(|(k, _)| !is_hop_by_hop(k.as_str()))
-        .filter_map(|(k, v)| {
-            v.to_str()
-                .ok()
-                .map(|val| (k.as_str().to_owned(), val.to_owned()))
-        })
-        .collect();
-
-    let req = TunnelRequest {
-        id: Uuid::new_v4(),
-        method: method.to_string(),
-        path,
-        headers: req_headers,
-        body: body_b64,
-    };
-
-    let (resp_tx, resp_rx) = oneshot::channel::<TunnelResponse>();
-
-    let req_id = req.id;
-
-    if let Err(e) = state.registry().send_request(device_id, req, resp_tx).await {
-        tracing::warn!("failed to send request to device: {e}");
-        return (StatusCode::SERVICE_UNAVAILABLE, "device not connected").into_response();
-    }
-
-    let tunnel_resp = match tokio::time::timeout(Duration::from_secs(30), resp_rx).await {
-        Ok(Ok(r)) => r,
+async fn build_streaming_response(
+    state: TunnelState,
+    session: Arc<DeviceSession>,
+    stream_id: Uuid,
+    registration: StreamRegistration,
+) -> Response {
+    let head = match tokio::time::timeout(
+        Duration::from_secs(state.api_config().response_head_timeout_secs),
+        registration.head_rx,
+    )
+    .await
+    {
+        Ok(Ok(head)) => head,
         Ok(Err(_)) => {
-            state.registry().cancel_request(req_id);
-            return (StatusCode::BAD_GATEWAY, "device closed connection").into_response();
+            session.cancel_stream(stream_id).await;
+            return (StatusCode::BAD_GATEWAY, "device closed stream").into_response();
         }
         Err(_) => {
-            state.registry().cancel_request(req_id);
+            session.cancel_stream(stream_id).await;
             return (StatusCode::GATEWAY_TIMEOUT, "device response timeout").into_response();
         }
     };
 
-    let status =
-        StatusCode::from_u16(tunnel_resp.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    response_from_stream(head, registration.body_rx, session, stream_id)
+}
 
+fn response_from_stream(
+    head: ResponseHead,
+    body_rx: tokio::sync::mpsc::Receiver<Result<Bytes, std::io::Error>>,
+    session: Arc<DeviceSession>,
+    stream_id: Uuid,
+) -> Response {
+    let status = StatusCode::from_u16(head.status).unwrap_or(StatusCode::BAD_GATEWAY);
     let mut headers = HeaderMap::new();
-    for (k, v) in &tunnel_resp.headers {
-        if is_hop_by_hop(k) || k.eq_ignore_ascii_case("content-length") {
-            continue;
-        }
-        if let (Ok(name), Ok(value)) = (
-            axum::http::HeaderName::from_bytes(k.as_bytes()),
-            axum::http::HeaderValue::from_str(v),
-        ) {
-            headers.insert(name, value);
+    headers.extend(head.headers);
+
+    let body_stream = CancelOnDropStream {
+        inner: ReceiverStream::new(body_rx),
+        finished: false,
+        session,
+        stream_id,
+    };
+
+    (status, headers, Body::from_stream(body_stream)).into_response()
+}
+
+async fn forward_request_body(
+    session: &DeviceSession,
+    stream_id: Uuid,
+    body: Body,
+    max_chunk_size: usize,
+) -> anyhow::Result<()> {
+    let mut stream = body.into_data_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        for slice in chunk.chunks(max_chunk_size) {
+            session
+                .send_frame(Frame::RequestBodyChunk {
+                    stream_id,
+                    data: Bytes::copy_from_slice(slice),
+                })
+                .await?;
         }
     }
 
-    let body = match tunnel_resp.body {
-        Some(b64) => base64::engine::general_purpose::STANDARD
-            .decode(b64)
-            .unwrap_or_default(),
-        None => vec![],
-    };
+    session
+        .send_frame(Frame::RequestBodyEnd { stream_id })
+        .await?;
 
-    (status, headers, body).into_response()
+    Ok(())
 }
 
-/// Extract the session token from the Host header subdomain.
-/// Host: "abc123.localhost:8001", domain: "localhost:8001" → Some("abc123")
 fn extract_token(headers: &HeaderMap, tunnel_domain: &str) -> Option<String> {
     let host = headers.get("host")?.to_str().ok()?;
     let suffix = format!(".{tunnel_domain}");
-    host.strip_suffix(&suffix).map(|s| s.to_owned())
+    host.strip_suffix(&suffix).map(|value| value.to_owned())
 }
 
 fn is_hop_by_hop(name: &str) -> bool {
@@ -181,4 +219,53 @@ fn is_hop_by_hop(name: &str) -> bool {
             | "upgrade"
             | "host"
     )
+}
+
+fn sanitized_headers(headers: HeaderMap) -> Headers {
+    let mut sanitized = HeaderMap::new();
+    for (name, value) in &headers {
+        if is_hop_by_hop(name.as_str()) {
+            continue;
+        }
+        sanitized.append(name.clone(), value.clone());
+    }
+    sanitized
+}
+
+struct CancelOnDropStream<S> {
+    inner: S,
+    finished: bool,
+    session: Arc<DeviceSession>,
+    stream_id: Uuid,
+}
+
+impl<S> futures_util::Stream for CancelOnDropStream<S>
+where
+    S: futures_util::Stream<Item = Result<Bytes, std::io::Error>> + Unpin,
+{
+    type Item = Result<Bytes, std::io::Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::new(&mut self.inner).poll_next(cx) {
+            Poll::Ready(None) => {
+                self.finished = true;
+                Poll::Ready(None)
+            }
+            other => other,
+        }
+    }
+}
+
+impl<S> Drop for CancelOnDropStream<S> {
+    fn drop(&mut self) {
+        if self.finished {
+            return;
+        }
+
+        let stream_id = self.stream_id;
+        let session = self.session.clone();
+        tokio::spawn(async move {
+            session.cancel_stream(stream_id).await;
+        });
+    }
 }

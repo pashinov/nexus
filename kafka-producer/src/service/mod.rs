@@ -1,4 +1,5 @@
 use rumqttc::{Event, Packet};
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::config::AppConfig;
@@ -6,12 +7,14 @@ use crate::kafka::KafkaProducer;
 use crate::mqtt::MqttClient;
 use crate::storage::Storage;
 
-pub async fn run_service(config: AppConfig) -> anyhow::Result<()> {
+pub async fn run_service(config: AppConfig, token: CancellationToken) -> anyhow::Result<()> {
     let producer = KafkaProducer::new(config.kafka)?;
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(String, String)>();
 
     let storage = Storage::open(&config.storage)?;
+
+    tracing::info!(host = %config.mqtt.host, port = config.mqtt.port, "MQTT broker connecting");
 
     let (mqtt_client, mut eventloop) = MqttClient::builder()
         .with_config(config.mqtt)
@@ -21,42 +24,65 @@ pub async fn run_service(config: AppConfig) -> anyhow::Result<()> {
     mqtt_client.subscribe(&config.mqtt_topic).await?;
 
     // MQTT event loop → channel
-    tokio::spawn(async move {
-        loop {
-            match eventloop.poll().await {
-                Ok(Event::Incoming(Packet::Publish(p))) => {
-                    if let Some(device_id) = extract_device_id(&p.topic) {
-                        match String::from_utf8(p.payload.to_vec()) {
-                            Ok(payload) => {
-                                tx.send((device_id.to_string(), payload))
-                                    .expect("should be alive");
+    let mqtt = tokio::spawn({
+        let token = token.clone();
+        async move {
+            loop {
+                tokio::select! {
+                    _ = token.cancelled() => break,
+                    result = eventloop.poll() => match result {
+                        Ok(Event::Incoming(Packet::Publish(p))) => {
+                            if let Some(device_id) = extract_device_id(&p.topic) {
+                                match String::from_utf8(p.payload.to_vec()) {
+                                    Ok(payload) => {
+                                        if tx.send((device_id.to_string(), payload)).is_err() {
+                                            break;
+                                        }
+                                    }
+                                    Err(err) => {
+                                        tracing::warn!(?device_id, "invalid MQTT message payload: {err}");
+                                    }
+                                }
                             }
-                            Err(e) => {
-                                tracing::warn!(?device_id, "invalid MQTT message payload: {e}");
-                            }
+                        }
+                        Ok(Event::Incoming(Packet::ConnAck(_))) => {
+                            tracing::info!("MQTT broker connected");
+                        }
+                        Ok(Event::Incoming(Packet::Disconnect)) => {
+                            tracing::warn!("MQTT broker disconnected");
+                        }
+                        Ok(_) => {}
+                        Err(err) => {
+                            tracing::error!("MQTT error: {err:#}");
                         }
                     }
                 }
-                Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                    tracing::info!("MQTT broker connected");
-                }
-                Ok(Event::Incoming(Packet::Disconnect)) => {
-                    tracing::warn!("MQTT broker disconnected");
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!("MQTT error: {e:#}");
-                }
             }
+            tracing::info!("MQTT eventloop stopped");
         }
     });
 
     // channel → Kafka producer
-    tokio::spawn(async move {
-        while let Some((device_id, payload)) = rx.recv().await {
-            producer.send(&device_id, &payload).await;
+    let kafka = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = token.cancelled() => break,
+                item = rx.recv() => {
+                    match item {
+                        Some((device_id, payload)) => {
+                            producer.send(&device_id, &payload).await;
+                        }
+                        None => break,
+                    }
+                }
+            }
         }
+        tracing::info!("Kafka forwarder stopped");
     });
+
+    let _ = tokio::join!(mqtt, kafka);
+
+    tracing::info!("kafka-producer stopped");
 
     Ok(())
 }

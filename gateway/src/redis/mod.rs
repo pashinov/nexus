@@ -37,10 +37,7 @@ impl RedisClient {
     }
 
     /// Delete the CSRF state token and return the redirect_to URL if it existed.
-    pub async fn consume_oauth_state(
-        &self,
-        state: &str,
-    ) -> anyhow::Result<Option<String>> {
+    pub async fn consume_oauth_state(&self, state: &str) -> anyhow::Result<Option<String>> {
         let mut conn = self.client.clone();
         let key = format!("oauth:state:{state}");
         let redirect_to: Option<String> = conn

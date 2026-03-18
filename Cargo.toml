@@ -21,14 +21,17 @@ members = [
 anyhow = "1.0.79"
 base64 = "0.22"
 axum = { version = "0.8", features = ["ws"] }
+bytes = { version = "1", features = ["serde"] }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.3", features = ["derive"] }
 futures-util = "0.3"
+http = "1"
+http-body-util = "0.1"
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 libc = "0.2"
 redis = { version = "1.0", features = ["tokio-comp", "connection-manager"] }
-reqwest = { version = "0.13", features = ["json", "form"] }
+reqwest = { version = "0.13", features = ["json", "form", "stream"] }
 native-tls = "0.2"
 redb = "3"
 rumqttc = { version = "0.25.1", features = ["use-native-tls"] }
@@ -42,6 +45,7 @@ sqlx = { version = "0.8.2", features = ["runtime-tokio-native-tls", "postgres", 
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "timeout", "normalize-path"] }
 tokio = { version = "1", default-features = false }
+tokio-stream = "0.1"
 tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
 tokio-util = "0.7"
 tracing = "0.1"

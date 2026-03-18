@@ -19,6 +19,7 @@ pub async fn http_service(config: AppConfig, token: CancellationToken) -> Result
 
     let state = TunnelState::builder()
         .with_config(config)
+        .with_shutdown(token.clone())
         .with_redis_client(redis_client)
         .build()?;
 
