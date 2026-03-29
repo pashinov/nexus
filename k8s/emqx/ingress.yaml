@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: emqx-dashboard
+  namespace: nexus
+spec:
+  tls:
+    - hosts:
+        - emqx.apashinov.com
+      secretName: cloudflare-origin-tls
+  rules:
+    - host: emqx.apashinov.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: emqx
+                port:
+                  number: 18083

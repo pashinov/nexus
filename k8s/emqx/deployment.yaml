@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx
+  namespace: nexus
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: emqx
+  template:
+    metadata:
+      labels:
+        app: emqx
+    spec:
+      nodeSelector:
+        role: worker
+      containers:
+        - name: emqx
+          image: emqx:5.8
+          ports:
+            - containerPort: 1883
+            - containerPort: 8883
+              hostPort: 8883
+            - containerPort: 18083
+          env:
+            - name: EMQX_AUTHENTICATION
+              value: "[]"
+          envFrom:
+            - secretRef:
+                name: emqx-secret
+          volumeMounts:
+            - name: data
+              mountPath: /opt/emqx/data
+            - name: log
+              mountPath: /opt/emqx/log
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: emqx-data
+        - name: log
+          persistentVolumeClaim:
+            claimName: emqx-log

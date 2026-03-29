@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      nodeSelector:
+        role: master
+      containers:
+        - name: gateway
+          image: pashinov/gateway:latest
+          command: ["gateway", "run", "-c", "/etc/gateway/config.json"]
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: gateway-secret
+          volumeMounts:
+            - name: config
+              mountPath: /etc/gateway
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: gateway-config

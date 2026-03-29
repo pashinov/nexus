@@ -8,3 +8,6 @@ target/
 
 # IDE
 .idea/
+
+# K8s secrets
+k8s/*/secret.yaml

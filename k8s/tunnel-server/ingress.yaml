@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tunnel-server
+  namespace: nexus
+spec:
+  tls:
+    - hosts:
+        - tunnel.apashinov.com
+      secretName: cloudflare-origin-tls
+  rules:
+    - host: tunnel.apashinov.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tunnel-server
+                port:
+                  number: 8001

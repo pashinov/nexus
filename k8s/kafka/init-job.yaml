@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init-topics
+  namespace: nexus
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      nodeSelector:
+        role: master
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-init
+          image: apache/kafka:latest
+          command:
+            - /opt/kafka/bin/kafka-topics.sh
+            - --bootstrap-server
+            - kafka:9092
+            - --create
+            - --if-not-exists
+            - --topic
+            - device.info
+            - --partitions
+            - "3"
+            - --replication-factor
+            - "1"

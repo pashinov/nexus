@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  namespace: nexus
+spec:
+  tls:
+    - hosts:
+        - api.apashinov.com
+      secretName: cloudflare-origin-tls
+  rules:
+    - host: api.apashinov.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8000

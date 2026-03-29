@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tunnel-server
+  namespace: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tunnel-server
+  template:
+    metadata:
+      labels:
+        app: tunnel-server
+    spec:
+      nodeSelector:
+        role: master
+      containers:
+        - name: tunnel-server
+          image: pashinov/tunnel-server:latest
+          command: ["tunnel-server", "run", "-c", "/etc/tunnel-server/config.json"]
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - secretRef:
+                name: tunnel-server-secret
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tunnel-server
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: tunnel-server-config
